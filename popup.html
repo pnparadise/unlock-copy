@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unlock Copy Paste</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="icons/icon48.png" alt="Extension Icon" class="icon">
+            <h1>解锁复制粘贴</h1>
+        </div>
+        
+        <div class="status" id="statusSection">
+            <div class="status-indicator active" id="statusIndicator"></div>
+            <span id="statusText">扩展已激活</span>
+            <button id="toggleBtn" class="toggle-btn-small active">
+                <span id="toggleText">禁用</span>
+            </button>
+        </div>
+        
+        <div class="info">
+            <h3>主要功能：</h3>
+            <ul class="features-list">
+                <li>✓ 解锁 <kbd>Ctrl</kbd> + <kbd>C</kbd> 复制功能</li>
+                <li>✓ 启用文本选择</li>
+                <li>✓ 绕过网站复制限制</li>
+                <li>✓ 自动处理复制操作</li>
+            </ul>
+        </div>
+        
+        <div class="usage">
+            <h3>使用方法：</h3>
+            <p>选中文本后按 <kbd>Ctrl</kbd> + <kbd>C</kbd> 即可复制</p>
+            <p>扩展会自动绕过网站的复制限制</p>
+        </div>
+        
+        <div class="footer">
+            <p>版本 2.1.0</p>
+            <p>支持开关控制的复制解锁</p>
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
