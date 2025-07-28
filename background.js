@@ -12,8 +12,11 @@ debugLog('Background script initializing...');
 chrome.runtime.onInstalled.addListener(function(details) {
     debugLog(`Extension installed/updated. Reason: ${details.reason}`);
     if (details.reason === 'install') {
-        // Set default state to enabled
-        chrome.storage.sync.set({ extensionEnabled: true });
+        // Set default state to disabled with empty domain config
+        chrome.storage.sync.set({
+            extensionEnabled: false,
+            domainConfig: []
+        });
         
         // Show welcome notification
         chrome.notifications.create({
@@ -43,7 +46,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     
     if (request.action === 'getExtensionState') {
         chrome.storage.sync.get(['extensionEnabled'], function(result) {
-            const enabled = result && result.extensionEnabled !== false;
+            const enabled = result && result.extensionEnabled === true; // Default to false
             debugLog(`Returning extension state: ${enabled}`);
             sendResponse({ enabled: enabled });
         });
@@ -60,11 +63,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.tabs.query({}, function(tabs) {
                 debugLog(`Notifying ${tabs.length} tabs about state change`);
                 tabs.forEach(function(tab) {
-                    chrome.tabs.sendMessage(tab.id, {
+                    sendMessageToContentScript(tab.id, {
                         action: 'extensionStateChanged',
                         enabled: request.enabled
-                    }).catch((error) => {
-                        debugLog(`Failed to notify tab ${tab.id}: ${error.message}`);
                     });
                 });
             });
@@ -82,53 +83,89 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             details: request
         });
     }
+    
+    if (request.action === 'updateIconFromContent') {
+        // Handle icon state update from content script
+        debugLog(`Content script updating icon: ${request.enabled} for domain: ${request.domain}`);
+        
+        // Update global state and badge directly
+        chrome.storage.sync.set({ extensionEnabled: request.enabled }, function() {
+            debugLog(`Updated badge from content script for domain ${request.domain}, enabled: ${request.enabled}`);
+            updateBadge(request.enabled);
+        });
+    }
+    
 });
 
-// Update extension badge based on state (without icon switching)
+// Update extension badge and icon based on state
 function updateBadge(enabled) {
-    debugLog(`Updating badge. Enabled: ${enabled}`);
+    debugLog(`Updating badge and icon. Enabled: ${enabled}`);
     
-    // 只更新徽章和标题，不切换图标
     if (enabled) {
         chrome.action.setBadgeText({ text: '' });
         chrome.action.setBadgeBackgroundColor({ color: '#27ae60' });
         chrome.action.setTitle({ title: '解锁复制粘贴 - 已启用' });
+        chrome.action.setIcon({
+            path: {
+                "16": "icons/icon16.png",
+                "32": "icons/icon32.png",
+                "48": "icons/icon48.png",
+                "128": "icons/icon128.png"
+            }
+        });
     } else {
         chrome.action.setBadgeText({ text: 'OFF' });
         chrome.action.setBadgeBackgroundColor({ color: '#e74c3c' });
         chrome.action.setTitle({ title: '解锁复制粘贴 - 已禁用' });
+        chrome.action.setIcon({
+            path: {
+                "16": "icons/icon16.png",
+                "32": "icons/icon32.png",
+                "48": "icons/icon48.png",
+                "128": "icons/icon128.png"
+            }
+        });
     }
 }
 
 // Initialize badge on startup
 chrome.storage.sync.get(['extensionEnabled'], function(result) {
-    const isEnabled = result && result.extensionEnabled !== false;
+    const isEnabled = result && result.extensionEnabled === true; // Default to false
     debugLog(`Initializing badge on startup. Enabled: ${isEnabled}`);
     updateBadge(isEnabled);
 });
 
-// Handle tab updates to inject content script if needed
-chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    if (changeInfo.status === 'complete' && tab.url && !tab.url.startsWith('chrome://')) {
-        debugLog(`Tab updated: ${tab.url}`);
-        
-        // Check if extension is enabled
-        chrome.storage.sync.get(['extensionEnabled'], function(result) {
-            const isEnabled = result && result.extensionEnabled !== false;
-            debugLog(`Extension enabled: ${isEnabled} for tab: ${tabId}`);
-            
-            if (isEnabled) {
-                // Send state to content script
-                chrome.tabs.sendMessage(tabId, {
-                    action: 'extensionStateChanged',
-                    enabled: true
-                }).catch((error) => {
-                    debugLog(`Failed to send state to tab ${tabId}: ${error.message}`);
-                });
-            }
-        });
-    }
+
+
+// Handle tab activation (switching between tabs) - request state from content script
+chrome.tabs.onActivated.addListener(function(activeInfo) {
+    chrome.tabs.get(activeInfo.tabId, function(tab) {
+        if (tab.url && !tab.url.startsWith('chrome://')) {
+            debugLog(`Tab activated: ${tab.url}`);
+            requestStateFromContentScript(activeInfo.tabId);
+        }
+    });
 });
+
+// Function to request current state from content script
+function requestStateFromContentScript(tabId) {
+    chrome.tabs.sendMessage(tabId, { action: 'getCurrentState' }).then((response) => {
+        if (response && typeof response.enabled === 'boolean') {
+            debugLog(`Received state from content script - enabled: ${response.enabled}, domain: ${response.domain}`);
+            
+            // Update global state and badge based on content script response
+            chrome.storage.sync.set({ extensionEnabled: response.enabled }, function() {
+                debugLog(`Updated badge from content script state, enabled: ${response.enabled}`);
+                updateBadge(response.enabled);
+            });
+        } else {
+            debugLog('No valid response from content script');
+        }
+    }).catch((error) => {
+        debugLog(`Failed to get state from content script: ${error.message}`);
+        // Fallback: content script might not be ready yet, ignore error
+    });
+}
 
 // Context menu for quick access (optional)
 chrome.contextMenus.create({
@@ -140,18 +177,16 @@ chrome.contextMenus.create({
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
     if (info.menuItemId === 'toggleExtension') {
         chrome.storage.sync.get(['extensionEnabled'], function(result) {
-            const currentState = result && result.extensionEnabled !== false;
+            const currentState = result && result.extensionEnabled === true; // Default to false
             const newState = !currentState;
             
             chrome.storage.sync.set({ extensionEnabled: newState }, function() {
                 updateBadge(newState);
                 
                 // Notify the tab
-                chrome.tabs.sendMessage(tab.id, {
+                sendMessageToContentScript(tab.id, {
                     action: 'extensionStateChanged',
                     enabled: newState
-                }).catch(() => {
-                    // Ignore errors
                 });
                 
                 // Show notification
@@ -172,7 +207,7 @@ if (chrome.commands && chrome.commands.onCommand) {
         debugLog(`Keyboard command received: ${command}`);
         if (command === 'toggle-extension') {
             chrome.storage.sync.get(['extensionEnabled'], function(result) {
-                const currentState = result && result.extensionEnabled !== false;
+                const currentState = result && result.extensionEnabled === true; // Default to false
                 const newState = !currentState;
                 
                 chrome.storage.sync.set({ extensionEnabled: newState }, function() {

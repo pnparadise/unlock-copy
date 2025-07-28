@@ -167,22 +167,68 @@
                     }
                 }
             }
+            
+            if (request.action === 'getCurrentState') {
+                // 响应background script的状态请求
+                console.log('[UnlockCopy] 响应状态请求:', extensionEnabled ? '启用' : '禁用');
+                sendResponse({
+                    enabled: extensionEnabled,
+                    domain: window.location.hostname
+                });
+            }
         });
     }
     
-    // 初始化时获取扩展状态
-    if (chrome.storage && chrome.storage.sync) {
-        chrome.storage.sync.get(['extensionEnabled'], function(result) {
-            extensionEnabled = result.extensionEnabled !== false; // 默认启用
-            console.log('[UnlockCopy] 初始状态:', extensionEnabled ? '启用' : '禁用');
+    // 初始化时获取扩展状态 - 简化版本，直接从地址栏获取域名
+    function initializeExtension() {
+        if (chrome.storage && chrome.storage.sync) {
+            // 直接使用hostname，不进行域名解析
+            const currentDomain = window.location.hostname;
             
-            // 根据初始状态控制CSS样式
+            chrome.storage.sync.get(['domainConfig'], function(result) {
+                const config = result.domainConfig || [];
+                
+                // 检查当前域名是否匹配配置
+                const isMatched = config.some(pattern => matchDomain(currentDomain, pattern));
+                
+                // 根据域名匹配结果设置状态
+                extensionEnabled = isMatched;
+                console.log('[UnlockCopy] 初始状态 - 域名:', currentDomain, '匹配:', isMatched, '启用:', extensionEnabled ? '启用' : '禁用');
+                
+                // 根据初始状态控制CSS样式
+                updateTextSelectionStyle(extensionEnabled);
+                
+                // 直接更新扩展图标状态
+                updateExtensionIcon(isMatched);
+            });
+        } else {
+            // 如果无法访问存储，默认禁用
+            extensionEnabled = false;
             updateTextSelectionStyle(extensionEnabled);
-        });
-    } else {
-        // 如果无法访问存储，默认启用
-        extensionEnabled = true;
-        updateTextSelectionStyle(extensionEnabled);
+        }
+    }
+    
+    // 初始化扩展
+    initializeExtension();
+    
+    
+    // 域名匹配函数（支持简单通配符）
+    function matchDomain(domain, pattern) {
+        if (!domain || !pattern) return false;
+        
+        // 如果包含通配符 *
+        if (pattern.includes('*')) {
+            const regexPattern = pattern.replace(/\*/g, '.*').replace(/\./g, '\\.');
+            try {
+                const regex = new RegExp('^' + regexPattern + '$');
+                return regex.test(domain);
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 精确匹配
+        return domain === pattern;
     }
     
     // 全局样式元素引用
@@ -230,6 +276,20 @@
             enableTextSelection();
         } else {
             disableTextSelection();
+        }
+    }
+    
+    // 直接更新扩展图标状态
+    function updateExtensionIcon(enabled) {
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+                action: 'updateIconFromContent',
+                enabled: enabled,
+                domain: window.location.hostname
+            }).catch(() => {
+                // 忽略错误，可能background script还未准备好
+                console.log('[UnlockCopy] 无法发送图标更新消息到background script');
+            });
         }
     }
     
