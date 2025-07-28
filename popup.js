@@ -7,12 +7,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusText = document.getElementById('statusText');
     const statusSection = document.getElementById('statusSection');
     const domainTags = document.getElementById('domainTags');
+    const versionText = document.getElementById('versionText');
     
     // 检查必要的DOM元素是否存在
-    if (!toggleBtn || !statusIndicator || !statusText || !statusSection || !domainTags) {
+    if (!toggleBtn || !statusIndicator || !statusText || !statusSection || !domainTags || !versionText) {
         console.error('Required DOM elements not found');
         return;
     }
+    
+    // 从manifest获取版本号
+    const manifest = chrome.runtime.getManifest();
+    versionText.textContent = `版本 ${manifest.version}`;
     
     let currentDomain = '';
     

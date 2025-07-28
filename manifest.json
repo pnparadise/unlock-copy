@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Unlock Copy Paste",
-  "version": "1.0.0",
-  "description": "Unlock blocked keyboard shortcuts like Ctrl+C and Ctrl+V on websites",
+  "name": "Unlock Copy",
+  "version": "3.0.0",
+  "description": "Unlock blocked keyboard shortcuts like Ctrl+C on websites",
   "permissions": [
     "activeTab",
     "scripting",
@@ -20,7 +20,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Unlock Copy Paste",
+    "default_title": "Unlock Copy",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

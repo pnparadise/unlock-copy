@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unlock Copy Paste</title>
+    <title>Unlock Copy</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <img src="icons/icon48.png" alt="Extension Icon" class="icon">
-            <h1>解锁复制</h1>
+            <div class="left-section">
+                <img src="icons/icon48.png" alt="Extension Icon" class="icon">
+                <h1>解锁复制</h1>
+            </div>
+            <span id="versionText" class="version">v3.0.0</span>
         </div>
         
         <div class="status" id="statusSection">
@@ -35,10 +38,6 @@
             </div>
         </div>
         
-        <div class="footer">
-            <p>版本 2.1.0</p>
-            <p>基于域名控制的复制解锁</p>
-        </div>
     </div>
     
     <script src="popup.js"></script>

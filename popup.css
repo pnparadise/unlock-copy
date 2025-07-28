@@ -23,9 +23,15 @@ body {
 .header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 20px;
     padding-bottom: 15px;
     border-bottom: 2px solid #f0f0f0;
+}
+
+.header .left-section {
+    display: flex;
+    align-items: center;
 }
 
 .icon {
@@ -39,6 +45,16 @@ h1 {
     font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
+}
+
+.version {
+    font-size: 12px;
+    color: #7f8c8d;
+    font-weight: 400;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
 }
 
 .status {
