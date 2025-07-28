@@ -148,17 +148,23 @@
         }
     }, true);
     
-    // 监听来自 popup 的消息
+    // 监听来自 popup 和 background 的消息
     if (chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-            if (request.action === 'toggleExtension') {
+            if (request.action === 'toggleExtension' || request.action === 'extensionStateChanged') {
                 extensionEnabled = request.enabled;
                 console.log('[UnlockCopy] 扩展状态变更:', extensionEnabled ? '启用' : '禁用');
                 
-                if (extensionEnabled) {
-                    showToast('🔓 解锁复制已启用');
-                } else {
-                    showToast('🔒 解锁复制已禁用', 'error');
+                // 根据状态控制CSS样式
+                updateTextSelectionStyle(extensionEnabled);
+                
+                // 只有来自popup的消息才显示toast（避免重复通知）
+                if (request.action === 'toggleExtension') {
+                    if (extensionEnabled) {
+                        showToast('🔓 解锁复制已启用');
+                    } else {
+                        showToast('🔒 解锁复制已禁用', 'error');
+                    }
                 }
             }
         });
@@ -169,13 +175,26 @@
         chrome.storage.sync.get(['extensionEnabled'], function(result) {
             extensionEnabled = result.extensionEnabled !== false; // 默认启用
             console.log('[UnlockCopy] 初始状态:', extensionEnabled ? '启用' : '禁用');
+            
+            // 根据初始状态控制CSS样式
+            updateTextSelectionStyle(extensionEnabled);
         });
+    } else {
+        // 如果无法访问存储，默认启用
+        extensionEnabled = true;
+        updateTextSelectionStyle(extensionEnabled);
     }
+    
+    // 全局样式元素引用
+    let textSelectionStyle = null;
     
     // 启用文本选择
     function enableTextSelection() {
-        const style = document.createElement('style');
-        style.textContent = `
+        if (textSelectionStyle) return; // 避免重复添加
+        
+        textSelectionStyle = document.createElement('style');
+        textSelectionStyle.id = 'unlock-copy-text-selection';
+        textSelectionStyle.textContent = `
             * {
                 -webkit-user-select: text !important;
                 -moz-user-select: text !important;
@@ -183,21 +202,38 @@
                 user-select: text !important;
             }
         `;
+        
         if (document.head) {
-            document.head.appendChild(style);
+            document.head.appendChild(textSelectionStyle);
         } else {
             document.addEventListener('DOMContentLoaded', () => {
-                document.head.appendChild(style);
+                if (document.head && textSelectionStyle) {
+                    document.head.appendChild(textSelectionStyle);
+                }
             });
+        }
+        console.log('[UnlockCopy] ✅ 文本选择样式已启用');
+    }
+    
+    // 禁用文本选择
+    function disableTextSelection() {
+        if (textSelectionStyle && textSelectionStyle.parentNode) {
+            textSelectionStyle.parentNode.removeChild(textSelectionStyle);
+            textSelectionStyle = null;
+            console.log('[UnlockCopy] ❌ 文本选择样式已禁用');
         }
     }
     
-    // 初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', enableTextSelection);
-    } else {
-        enableTextSelection();
+    // 根据扩展状态控制文本选择样式
+    function updateTextSelectionStyle(enabled) {
+        if (enabled) {
+            enableTextSelection();
+        } else {
+            disableTextSelection();
+        }
     }
+    
+    // 初始化已移至状态获取后执行，确保样式控制与扩展状态同步
     
     console.log('[UnlockCopy] 扩展已加载 - 使用增强的 copy 事件拦截');
 })();
