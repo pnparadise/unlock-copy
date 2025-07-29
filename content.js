@@ -158,8 +158,11 @@
                 // 根据状态控制CSS样式
                 updateTextSelectionStyle(extensionEnabled);
                 
-                // 只有来自popup的消息才显示toast（避免重复通知）
-                if (request.action === 'toggleExtension') {
+                // 显示toast通知
+                if (request.showToast && request.toastMessage) {
+                    showToast(request.toastMessage, extensionEnabled ? 'success' : 'error');
+                } else if (request.action === 'toggleExtension') {
+                    // 来自popup的消息显示toast
                     if (extensionEnabled) {
                         showToast('🔓 解锁复制已启用');
                     } else {

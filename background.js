@@ -18,13 +18,6 @@ chrome.runtime.onInstalled.addListener(function(details) {
             domainConfig: []
         });
         
-        // Show welcome notification
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Unlock Copy Paste Installed',
-            message: 'Extension is now active. Visit any website to unlock keyboard shortcuts!'
-        });
     } else if (details.reason === 'update') {
         // Handle extension updates
         console.log('Unlock Copy Paste extension updated');
@@ -183,19 +176,16 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
             chrome.storage.sync.set({ extensionEnabled: newState }, function() {
                 updateBadge(newState);
                 
-                // Notify the tab
-                sendMessageToContentScript(tab.id, {
+                // Notify the tab with toast message
+                chrome.tabs.sendMessage(tab.id, {
                     action: 'extensionStateChanged',
-                    enabled: newState
+                    enabled: newState,
+                    showToast: true,
+                    toastMessage: newState ? '🔓 解锁复制已启用' : '🔒 解锁复制已禁用'
+                }).catch(() => {
+                    // Ignore errors if content script not ready
                 });
                 
-                // Show notification
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: 'icons/icon48.png',
-                    title: 'Unlock Copy Paste',
-                    message: newState ? 'Extension Enabled' : 'Extension Disabled'
-                });
             });
         });
     }
@@ -213,11 +203,18 @@ if (chrome.commands && chrome.commands.onCommand) {
                 chrome.storage.sync.set({ extensionEnabled: newState }, function() {
                     updateBadge(newState);
                     
-                    chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon48.png',
-                        title: 'Unlock Copy Paste',
-                        message: newState ? 'Extension Enabled' : 'Extension Disabled'
+                    // Send toast message to active tab
+                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                        if (tabs[0]) {
+                            chrome.tabs.sendMessage(tabs[0].id, {
+                                action: 'extensionStateChanged',
+                                enabled: newState,
+                                showToast: true,
+                                toastMessage: newState ? '🔓 解锁复制已启用' : '🔒 解锁复制已禁用'
+                            }).catch(() => {
+                                // Ignore errors if content script not ready
+                            });
+                        }
                     });
                 });
             });

@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Unlock Copy",
+  "name": "解锁复制",
   "version": "3.0.0",
-  "description": "Unlock blocked keyboard shortcuts like Ctrl+C on websites",
+  "description": "解锁网站被禁用的键盘快捷键Ctrl+C，绕过复制限制",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
-    "notifications",
     "contextMenus"
   ],
   "content_scripts": [
@@ -20,7 +19,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Unlock Copy",
+    "default_title": "解锁复制",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
